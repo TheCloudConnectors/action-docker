@@ -8,5 +8,7 @@ RUN \
 	rm /var/cache/apk/*
 
 ADD build.sh /bin/
+
 RUN chmod +x /bin/build.sh
+
 ENTRYPOINT ["/usr/local/bin/dockerd-entrypoint.sh", "/bin/build.sh"]
