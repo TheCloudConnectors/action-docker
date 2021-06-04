@@ -1,0 +1,5 @@
+name: Docker ECR Build
+description: Build docker image and push to Amazon ECR. Private npm registries are supported.
+runs:
+  using: docker
+  image: Dockerfile
