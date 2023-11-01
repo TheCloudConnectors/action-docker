@@ -1,8 +1,8 @@
-FROM docker:18.09.0-dind
+FROM docker:24.0.7-dind
 
 RUN \
 	mkdir -p /aws && \
-	apk -Uuv add groff less python py-pip && \
+	apk -Uuv add groff less python3 py-pip && \
 	pip install awscli && \
 	apk --purge -v del py-pip && \
 	rm /var/cache/apk/*
