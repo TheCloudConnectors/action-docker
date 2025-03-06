@@ -2,11 +2,11 @@ set -x
 set -e
 
 # Start daemon
-/usr/local/bin/dockerd --data-root /var/lib/docker -s aufs --experimental &
+/usr/local/bin/dockerd --data-root /var/lib/docker --storage-driver=overlay2 &
 
 sleep 10
 
-/usr/local/bin/docker version
+DOCKER_HOST=unix:///var/run/docker.sock /usr/local/bin/docker version
 
 set +x
 
@@ -15,25 +15,39 @@ echo "registry=$NPM_REGISTRY" > /root/.npmrc
 echo "always-auth=true" >> /root/.npmrc
 echo $NPMRC >> /root/.npmrc
 
+# Set default platform if not specified
+PLATFORM=${PLATFORM:-"linux/amd64"}
+
+# Set Docker host to use Unix socket
+export DOCKER_HOST=unix:///var/run/docker.sock
+
 # ECR login to all registries (two accounts)
-$(aws ecr get-login --no-include-email --region=$AWS_REGION --registry-ids $REGISTRY)
+aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REGISTRY.dkr.ecr.$AWS_REGION.amazonaws.com
 
 if [ -n "${SECONDARY_REGISTRY}" ]; then
-    $(aws ecr get-login --no-include-email --region=$AWS_REGION --registry-ids $SECONDARY_REGISTRY)
+    aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $SECONDARY_REGISTRY.dkr.ecr.$AWS_REGION.amazonaws.com
 fi
 
 set -x
 
-# Build image
-DOCKER_BUILDKIT=1 /usr/local/bin/docker build --rm=true --pull=true -t $GITHUB_SHA -f $DOCKERFILE --secret id=npm,src=/root/.npmrc $CONTEXT
+# Build and push
+DOCKER_BUILDKIT=1 docker buildx build \
+    --platform ${PLATFORM} \
+    -t $REPOSITORY:$TAG \
+    -f $DOCKERFILE \
+    --secret id=npm,src=/root/.npmrc \
+    --load \
+    $CONTEXT
 
-/usr/local/bin/docker tag $GITHUB_SHA $REGISTRY.dkr.ecr.$AWS_REGION.amazonaws.com/$REPOSITORY:$TAG
-/usr/local/bin/docker push $REGISTRY.dkr.ecr.$AWS_REGION.amazonaws.com/$REPOSITORY:$TAG
+# Push to primary registry
+docker tag $REPOSITORY:$TAG $REGISTRY.dkr.ecr.$AWS_REGION.amazonaws.com/$REPOSITORY:$TAG
+docker push $REGISTRY.dkr.ecr.$AWS_REGION.amazonaws.com/$REPOSITORY:$TAG
 
+# Push to secondary registry if defined
 if [ -n "${SECONDARY_REGISTRY}" ]; then
-    /usr/local/bin/docker tag $GITHUB_SHA $SECONDARY_REGISTRY.dkr.ecr.$AWS_REGION.amazonaws.com/$REPOSITORY:$TAG
-    /usr/local/bin/docker push $SECONDARY_REGISTRY.dkr.ecr.$AWS_REGION.amazonaws.com/$REPOSITORY:$TAG
+    docker tag $REPOSITORY:$TAG $SECONDARY_REGISTRY.dkr.ecr.$AWS_REGION.amazonaws.com/$REPOSITORY:$TAG
+    docker push $SECONDARY_REGISTRY.dkr.ecr.$AWS_REGION.amazonaws.com/$REPOSITORY:$TAG
 fi
 
-/usr/local/bin/docker rmi $GITHUB_SHA
-/usr/local/bin/docker system prune -f
+# Clean up
+docker rmi $REPOSITORY:$TAG

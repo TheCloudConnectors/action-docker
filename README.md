@@ -31,6 +31,7 @@ jobs:
         DOCKERFILE: Dockerfile
         CONTEXT: ./
         TAG: ${{ steps.tag.outputs.SOURCE_TAG }}
+        PLATFORM: linux/arm64
 ```
 
 ## Publish
