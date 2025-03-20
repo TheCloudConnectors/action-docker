@@ -25,11 +25,11 @@ fi
 # Process BUILD_ARGS if provided
 BUILD_ARGS_STRING=""
 if [ -n "${BUILD_ARGS}" ]; then
-    while IFS= read -r line || [ -n "$line" ]; do
+    echo "$BUILD_ARGS" | while read -r line; do
         if [ -n "$line" ]; then
             BUILD_ARGS_STRING="$BUILD_ARGS_STRING --build-arg $line"
         fi
-    done <<< "$BUILD_ARGS"
+    done
 fi
 
 set -x
