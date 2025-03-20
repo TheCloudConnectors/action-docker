@@ -32,6 +32,10 @@ jobs:
         CONTEXT: ./
         TAG: ${{ steps.tag.outputs.SOURCE_TAG }}
         PLATFORM: linux/arm64
+        BUILD_ARGS: |
+          ARG1=value1
+          ARG2=${{ secrets.SECRET_VALUE }}
+          ARG3=${{ vars.ENVIRONMENT_VALUE }}
 ```
 
 ## Publish

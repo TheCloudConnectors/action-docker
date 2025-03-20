@@ -30,12 +30,23 @@ fi
 
 set -x
 
+# Convert BUILD_ARGS multiline string to docker build args
+BUILD_ARGS_STRING=""
+if [ -n "${BUILD_ARGS}" ]; then
+    while IFS= read -r line || [ -n "$line" ]; do
+        if [ -n "$line" ]; then
+            BUILD_ARGS_STRING="$BUILD_ARGS_STRING --build-arg $line"
+        fi
+    done <<< "$BUILD_ARGS"
+fi
+
 # Build and push
 DOCKER_BUILDKIT=1 docker buildx build \
     --platform ${PLATFORM} \
     -t $REPOSITORY:$TAG \
     -f $DOCKERFILE \
     --secret id=npm,src=/root/.npmrc \
+    $BUILD_ARGS_STRING \
     --load \
     $CONTEXT
 
