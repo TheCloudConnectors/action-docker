@@ -22,10 +22,20 @@ if [ -n "${SECONDARY_REGISTRY}" ]; then
     $(aws ecr get-login --no-include-email --region=$AWS_REGION --registry-ids $SECONDARY_REGISTRY)
 fi
 
+# Process BUILD_ARGS if provided
+BUILD_ARGS_STRING=""
+if [ -n "${BUILD_ARGS}" ]; then
+    while IFS= read -r line || [ -n "$line" ]; do
+        if [ -n "$line" ]; then
+            BUILD_ARGS_STRING="$BUILD_ARGS_STRING --build-arg $line"
+        fi
+    done <<< "$BUILD_ARGS"
+fi
+
 set -x
 
 # Build image
-DOCKER_BUILDKIT=1 /usr/local/bin/docker build --rm=true --pull=true -t $GITHUB_SHA -f $DOCKERFILE --secret id=npm,src=/root/.npmrc $CONTEXT
+DOCKER_BUILDKIT=1 /usr/local/bin/docker build --rm=true --pull=true -t $GITHUB_SHA -f $DOCKERFILE --secret id=npm,src=/root/.npmrc $BUILD_ARGS_STRING $CONTEXT
 
 /usr/local/bin/docker tag $GITHUB_SHA $REGISTRY.dkr.ecr.$AWS_REGION.amazonaws.com/$REPOSITORY:$TAG
 /usr/local/bin/docker push $REGISTRY.dkr.ecr.$AWS_REGION.amazonaws.com/$REPOSITORY:$TAG
