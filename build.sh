@@ -33,6 +33,7 @@ set -x
 # Build and push
 DOCKER_BUILDKIT=1 docker buildx build \
     --platform ${PLATFORM} \
+    --security-revert=CVE-2023-46809 \
     -t $REPOSITORY:$TAG \
     -f $DOCKERFILE \
     --secret id=npm,src=/root/.npmrc \
