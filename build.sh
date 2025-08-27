@@ -28,6 +28,16 @@ if [ -n "${SECONDARY_REGISTRY}" ]; then
     aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $SECONDARY_REGISTRY.dkr.ecr.$AWS_REGION.amazonaws.com
 fi
 
+# Process BUILD_ARGS if provided
+BUILD_ARGS_STRING=""
+if [ -n "${BUILD_ARGS}" ]; then
+    while read -r line; do
+        if [ -n "$line" ]; then
+            BUILD_ARGS_STRING="$BUILD_ARGS_STRING --build-arg $line"
+        fi
+    done < <(echo "$BUILD_ARGS")
+fi
+
 set -x
 
 # Build and push
@@ -36,6 +46,7 @@ DOCKER_BUILDKIT=1 docker buildx build \
     -t $REPOSITORY:$TAG \
     -f $DOCKERFILE \
     --secret id=npm,src=/root/.npmrc \
+    $BUILD_ARGS_STRING \
     --load \
     $CONTEXT
 
